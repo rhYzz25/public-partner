@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.xz.match.mapper.TagMapper">
+
+    <resultMap id="BaseResultMap" type="com.xz.match.model.entity.Tag">
+        <id property="id" column="id" />
+        <result property="name" column="name" />
+        <result property="kind" column="kind" />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
+
+    <select id="selectTagsByUserId" resultMap="BaseResultMap">
+        SELECT t.*
+        FROM tag t
+        INNER JOIN user_tag ut ON t.id = ut.tag_id
+        WHERE ut.user_id = #{userId}
+    </select>
+
+    <select id="selectTagsByUserIdList" resultType="java.util.HashMap">
+        SELECT ut.user_id, t.name
+        FROM tag t
+        INNER JOIN user_tag ut ON t.id = ut.tag_id
+        WHERE ut.user_id IN
+        <foreach collection="userIds" open="(" separator="," close=")" item="id">
+            #{id}
+        </foreach>
+    </select>
+
+</mapper>

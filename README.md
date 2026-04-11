@@ -1,0 +1,102 @@
+写在一切之前
+
+这是本人第一个项目，千里之行，始于足下
+
+虽然功能比较简陋，不够完善，很多小细节也不到位
+
+但依旧倾注了很多时间和心思在上面，也是从头到尾基本自己手写
+
+同时也感谢各种技术文章解答和ai提供更加便捷的实现和思路
+
+# 宇伙伴系统
+
+> 一款基于标签的伙伴平台，帮助用户找到兴趣相投的伙伴一起组队学习。
+
+## 项目简介
+
+本项目是一个前后端分离的伙伴匹配系统，用户可以填写个人信息、添加个性化标签，系统会根据标签相似度为用户推荐最匹配的伙伴，支持创建/加入队伍，找到同好。
+
+## 技术栈
+
+### 后端
+- Java 17 + Spring Boot 3.5
+- MyBatis Plus + MySQL
+- Redis + Redisson（分布式锁、缓存）
+- 腾讯云 COS 对象存储（存储头像）
+- Knife4j/Swagger 接口文档
+- Hutool 工具库
+
+### 前端
+- Vue 3 + Element Plus
+- Vite
+- Axios
+
+## 功能模块
+
+- 用户模块：注册、登录、登出、个人信息修改、头像上传
+- 标签模块：用户标签管理、管理员标签分类维护
+- 推荐模块：基于**编辑距离算法**计算标签相似度，为用户推荐相似伙伴
+- 队伍模块：创建队伍、加入/退出队伍、编辑队伍、队伍列表搜索筛选
+- 缓存预热：定时任务预生成推荐结果，提升用户访问体验
+- 权限管理：基于 AOP 的权限拦截校验
+
+## 项目结构
+
+```
+├── src/main/java/com/xz/match
+│   ├── annotation/    # 自定义注解（权限校验、限流）
+│   ├── aop/          # AOP 切面（权限拦截）
+│   ├── common/       # 公共组件（错误码、响应封装、常量）
+│   ├── config/       # 配置类（Redis、Redisson、MyBatisPlus）
+│   ├── controller/   # 控制器层
+│   ├── exception/    # 全局异常处理
+│   ├── job/          # 定时任务（缓存预热）
+│   ├── mapper/       # MyBatis Plus Mapper
+│   ├── model/        # 数据模型（实体、DTO、VO）
+│   └── service/      # 业务层（接口 + 实现）
+├── src/main/resources
+│   └── application*.yml # 配置文件
+└── sql/              # 数据库建表SQL
+```
+
+## 快速启动
+
+### 环境要求
+- JDK 17+
+- MySQL 8.0+
+- Redis 6.0+
+- Maven 3.6+
+
+### 步骤
+
+1. **克隆项目**
+```bash
+git clone https://github.com/rhYzz25/public-partner.git
+cd partner-match-backend
+```
+
+2. **初始化数据库**
+```bash
+mysql -u<用户名> -p<密码> < sql/create_table.sql
+```
+
+3. **修改配置**
+
+新建yml配置文件`src/main/resources/application-local.yml`，修改：
+- 数据库连接地址、用户名、密码
+- Redis 连接地址、端口、数据库
+- 腾讯云 COS 密钥（需要头像存储功能时配置）
+
+4. **启动项目**
+打开项目，运行 `BackendApplication.java` 中的 main 方法即可启动。
+
+接口文档访问：`http://localhost:8080/doc.html`
+
+## 核心亮点
+
+- **性能优化**：解决 SQL N+1 查询问题，将原本循环查询优化为一次批量查询，从 O(N) 次SQL降到固定 2 次
+- **缓存设计**：推荐结果缓存到 Redis，给过期时间增加随机偏移防止缓存雪崩
+- **并发安全**：使用 Redisson 分布式锁解决多并发加入队伍导致的超员问题
+- **相似度计算**：基于 Levenshtein 编辑距离 + 动态规划计算标签相似度，排序推荐最相似用户
+- **缓存预热**：定时任务每日凌晨预热推荐缓存，用户访问更快
+- **规范分层**：遵循单一职责，Controller/Service/Dao 分层清晰，代码符合编码规范

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--对应mapper接口-->
+<mapper namespace="com.xz.match.mapper.UserMapper">
+    <resultMap id="BaseResultMap" type="com.xz.match.model.entity.User">
+        <id property="id" column="id"/>
+        <result property="nickname" column="nickname"/>
+        <result property="avatar" column="avatar"/>
+        <result property="account" column="account"/>
+        <result property="password" column="password"/>
+        <result property="email" column="email"/>
+        <result property="introduction" column="introduction"/>
+        <result property="gender" column="gender"/>
+        <result property="role" column="role"/>
+        <result property="isDelete" column="is_delete"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <!--原来一直都是insert吗,我以为ter-->
+    <!--注意nickname-->
+    <insert id="register_mybatis">
+        insert into user (account, password, nickname) values (#{account}, #{saltPassword}, #{account})
+    </insert>
+    <select id="selectByAccount" resultType="java.lang.Integer">
+        select count(*) from user where account = #{account}
+    </select>
+
+    <!--think 先自己写-->
+    <!--todo 待理解,sql还得学-->
+    <select id="searchByTags" resultType="com.xz.match.model.entity.User">
+        select u.*
+        from user u
+        inner join user_tag ut on u.id = ut.user_id
+        inner join tag t on t.id = ut.tag_id
+        where t.name in
+        <foreach collection="tagList" item="tagName" open="(" separator="," close=")">
+            #{tagName}
+        </foreach>
+        group by u.id
+        having count(t.id) = #{listSize}
+        order by u.id
+    </select>
+
+</mapper>
