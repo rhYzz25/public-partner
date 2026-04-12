@@ -15,10 +15,11 @@ import com.xz.match.service.UserTagService;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.util.CollectionUtils;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/tags")
@@ -33,6 +34,8 @@ public class TagsController {
 	private TagConvert tagConvert;
 	@Resource
 	private com.xz.match.mapper.TagMapper tagMapper;
+	@Resource
+	private RedisTemplate<String, Objects> redisTemplate;
 
 	// think 这两个方法是不是可以合并成update方法,按理来说add应该是管理员用的
 	@PostMapping("/addTag")
@@ -78,6 +81,9 @@ public class TagsController {
 		if (!result) {
 			throw new MyCustomException(ErrorCode.SYSTEM_ERROR);
 		}
+		Long userId = loginUser.getId();
+		String key = String.format("user:recommend:%s", userId);
+		redisTemplate.delete(key);
 		return ResultUtils.success(true);
 	}
 
