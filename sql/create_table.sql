@@ -58,6 +58,9 @@ create table team
 )
     comment '队伍';
 
+-- 多一事那就多一事
+alter table team add column `need_approval` tinyint(1) default 0 comment '是否需要审批，0-不需要，1-需要';
+
 create table user_team
 (
     id          bigint auto_increment comment 'id'
