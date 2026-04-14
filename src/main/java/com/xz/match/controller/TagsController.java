@@ -19,7 +19,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Objects;
 
 @RestController
 @RequestMapping("/tags")
@@ -35,7 +34,7 @@ public class TagsController {
 	@Resource
 	private com.xz.match.mapper.TagMapper tagMapper;
 	@Resource
-	private RedisTemplate<String, Objects> redisTemplate;
+	private RedisTemplate<String, Object> redisTemplate;
 
 	// think 这两个方法是不是可以合并成update方法,按理来说add应该是管理员用的
 	@PostMapping("/addTag")

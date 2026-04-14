@@ -12,6 +12,7 @@
             <result property="expireTime" column="expire_time" />
             <result property="userId" column="user_id" />
             <result property="status" column="status" />
+            <result property="needApproval" column="need_approval"/>
             <result property="password" column="password" />
             <result property="createTime" column="create_time" />
             <result property="updateTime" column="update_time" />

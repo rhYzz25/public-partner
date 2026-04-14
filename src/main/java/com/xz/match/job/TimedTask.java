@@ -53,7 +53,7 @@ public class TimedTask {
 							Long userId = user.getId();
 							Page<UserVO> userVOPage = userService.recommendByUserId(1, 10, userId);
 							String key = String.format("user:recommend:%s", userId);
-							redisTemplate.opsForValue().set(key, userVOPage, 28800, TimeUnit.SECONDS);
+							redisTemplate.opsForValue().set(key, userVOPage, 1234, TimeUnit.SECONDS);
 							log.info("缓存成功");
 						} catch (Exception e) {
 							log.error("预热用户失败, 用户id = {}", user.getId(), e);

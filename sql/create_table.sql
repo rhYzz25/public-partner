@@ -71,7 +71,18 @@ create table user_team
 )
     comment '用户队伍关系';
 
+create table if not exists join_req(
+                                       `id` int primary key auto_increment comment '主键',
+                                       `team_id` int not null comment '队伍id',
+                                       `user_id` int not null comment '用户id',
+                                       `create_time` datetime default current_timestamp
+)engine=innodb default charset = utf8;
+
+alter table join_req add `status` tinyint(1) default 0 comment '其实我是故意忘加的字段';
+-- 忘吧,多忘
+alter table join_req add column `password` varchar(512) null comment '入队密码，加密队伍需要';
+
 -- 插入默认管理员账号：admin
 INSERT INTO `user` (`id`, `nickname`, `avatar`, `account`, `password`, `email`, `gender`, `role`, `is_delete`)
-VALUES (1, '管理员', NULL, 'admin', '', 'admin@example.com', 0, 'admin', 0);
+VALUES (1, '管理员', NULL, 'admin123', 'admin123', 'admin@example.com', 0, 'admin', 0);
 

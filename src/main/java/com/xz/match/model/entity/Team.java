@@ -57,6 +57,11 @@ public class Team implements Serializable {
      */
     private String password;
 
+	/**
+	 * 0(默认) 不要审批 1 需要审批
+	 */
+	private Integer needApproval;
+
     /**
      * 创建时间
      */

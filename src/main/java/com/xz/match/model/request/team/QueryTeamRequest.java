@@ -27,6 +27,11 @@ public class QueryTeamRequest {
 	private Integer status;
 
 	/**
+	 * 0(默认) 不要审批 1 需要审批
+	 */
+	private Integer needApproval;
+
+	/**
 	 * 最大人数最小值
 	 */
 	private Integer minMaxNum;

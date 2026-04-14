@@ -24,7 +24,7 @@ public interface TeamService extends IService<Team> {
 
 	Set<Long> hasJoinTeamId(List<Long> queryTeamId, User loginUser);
 
-	Boolean joinTeam(JoinTeamRequest joinTeamRequest, User loginUser);
+	Boolean joinTeam(JoinTeamRequest joinTeamRequest, Long userId);
 
 	Boolean quitTeam(Long teamId,User loginUser);
 

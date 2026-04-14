@@ -6,10 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xz.match.common.ErrorCode;
 import com.xz.match.mapper.TagMapper;
 import com.xz.match.model.constant.TeamStatusEnum;
-import com.xz.match.model.entity.Tag;
-import com.xz.match.model.entity.Team;
-import com.xz.match.model.entity.User;
-import com.xz.match.model.entity.UserTeam;
+import com.xz.match.model.entity.*;
 import com.xz.match.model.request.team.JoinTeamRequest;
 import com.xz.match.model.request.team.QueryTeamRequest;
 import com.xz.match.model.vo.TeamVO;
@@ -17,6 +14,7 @@ import com.xz.match.model.vo.UserVO;
 import com.xz.match.exception.MyCustomException;
 import com.xz.match.job.convert.TeamConvert;
 import com.xz.match.job.convert.UserConvert;
+import com.xz.match.service.JoinReqService;
 import com.xz.match.service.TeamService;
 import com.xz.match.mapper.TeamMapper;
 import com.xz.match.service.UserService;
@@ -42,16 +40,14 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 
 	@Resource
 	private UserService userService;
-
 	@Resource
 	private UserTeamService userTeamService;
-
+	@Resource
+	private JoinReqService joinReqService;
 	@Resource
 	private UserConvert userConvert;
-
 	@Resource
 	private TeamConvert teamConvert;
-
 	@Resource
 	private RedissonClient redissonClient;
 	@Autowired
@@ -93,6 +89,11 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 		Date maxExpireDate = new Date(maxExpireTimeMillis);
 		if (expireTime.after(maxExpireDate)) {
 			throw new MyCustomException(ErrorCode.PARAMS_ERROR, "过期时间最长不能超过" + MAX_EXPIRE_DAYS + "天");
+		}
+		// 判断审批状态是否合法
+		Integer needApproval = team.getNeedApproval();
+		if (needApproval != 0 && needApproval != 1) {
+			throw new MyCustomException(ErrorCode.PARAMS_ERROR, "审批状态错误");
 		}
 		TeamStatusEnum status = team.getStatus();
 		String password = team.getPassword();
@@ -264,6 +265,19 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 			wrapper.set("password", "");
 		}
 
+		// 6. 审核状态的变化 审核变成非审核,强制需要审核
+		Integer needApproval = newTeam.getNeedApproval();
+		if (needApproval == 0) {
+			List<JoinReq> pendingReqs = joinReqService.list(
+					new QueryWrapper<JoinReq>()
+							.eq("team_id", newTeam.getId())
+							.eq("status", 0)  // 还未审核的
+					);
+			if (!CollectionUtils.isEmpty(pendingReqs)) {
+				throw new MyCustomException(ErrorCode.PARAMS_ERROR, "该队伍还有未处理的申请, 请您处理");
+			}
+		}
+
 		// think 遇见问题,打败问题
 		return this.update(newTeam, wrapper);
 	}
@@ -326,6 +340,10 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 				throw new MyCustomException(ErrorCode.PARAMS_ERROR);
 			}
 			wrapper.eq("status", status);
+		}
+		Integer needApproval = queryTeamRequest.getNeedApproval();
+		if (needApproval != null) {
+			wrapper.eq("need_approval", needApproval);
 		}
 		// Integer minMaxNum;Integer maxMaxNum;
 		Integer minMaxNum = queryTeamRequest.getMinMaxNum();
@@ -443,12 +461,12 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 
 	@Override
 	@Transactional(rollbackFor = Exception.class)
-	public Boolean joinTeam(JoinTeamRequest joinTeamRequest, User loginUser) {
+	public Boolean joinTeam(JoinTeamRequest joinTeamRequest, Long userId) {
 		// 判空
 		// 该队伍是什么状态
 		// 队伍是否过期 think 都不显示过期队伍这里还要校验吗
 		// 通过teamId,将userId插入user_team表中
-		if (joinTeamRequest == null || loginUser == null) {
+		if (joinTeamRequest == null || userId == null) {
 			throw new MyCustomException(ErrorCode.PARAMS_ERROR);
 		}
 		// 1. 获取队伍
@@ -500,7 +518,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 		try {
 			// 6. 查询用户加入队伍的数量
 			QueryWrapper<UserTeam> countWrapper = new QueryWrapper<>();
-			Long userId = loginUser.getId();
 			countWrapper.eq("user_id", userId);
 			long joinedCount = userTeamService.count(countWrapper);
 			if (joinedCount >= 5) {

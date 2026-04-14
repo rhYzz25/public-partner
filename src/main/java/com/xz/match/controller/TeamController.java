@@ -1,18 +1,22 @@
 package com.xz.match.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.xz.match.common.ErrorCode;
 import com.xz.match.common.ResponseEntity;
 import com.xz.match.common.ResultUtils;
+import com.xz.match.model.entity.JoinReq;
 import com.xz.match.model.entity.Team;
 import com.xz.match.model.entity.User;
 import com.xz.match.model.request.team.AddTeamRequest;
 import com.xz.match.model.request.team.JoinTeamRequest;
 import com.xz.match.model.request.team.QueryTeamRequest;
 import com.xz.match.model.request.team.UpdateTeamRequest;
+import com.xz.match.model.vo.JoinReqVO;
 import com.xz.match.model.vo.TeamVO;
 import com.xz.match.exception.MyCustomException;
 import com.xz.match.job.convert.TeamConvert;
 import com.xz.match.model.vo.UserVO;
+import com.xz.match.service.JoinReqService;
 import com.xz.match.service.TeamService;
 import com.xz.match.service.UserService;
 import jakarta.annotation.Resource;
@@ -30,10 +34,10 @@ public class TeamController {
 
 	@Resource
 	private UserService userService;
-
 	@Resource
 	private TeamService teamService;
-
+	@Resource
+	private JoinReqService joinReqService;
 	@Resource
 	private TeamConvert teamConvert;
 	// 增删改查查查
@@ -124,20 +128,103 @@ public class TeamController {
 		return ResultUtils.success(Objects.requireNonNullElse(teamVOList, Collections.emptyList()));
 	}
 
+	@PostMapping("/joinReq")
+	public ResponseEntity<Boolean> setJoinTeamRequest(@RequestBody JoinTeamRequest joinTeamRequest, HttpServletRequest request) {
+		// 1. 判空
+		User loginUser = userService.getLoginUser(request);
+		if (loginUser == null) throw new MyCustomException(ErrorCode.N0T_L0GIN, "未登录,无法加入队伍");
+		Long teamId = joinTeamRequest.getTeamId();
+		Long userId = loginUser.getId();
+		if (teamId == null || teamId == 0L || userId == null || userId == 0L) {
+			throw new MyCustomException(ErrorCode.PARAMS_ERROR, "请求参数错误");
+		}
+		// 2. 判断是否需要审核
+		Team team = teamService.getById(teamId);
+		if (team.getNeedApproval() == 1){
+			JoinReq joinReq = new JoinReq();
+			joinReq.setTeamId(teamId);
+			joinReq.setUserId(userId);
+			joinReq.setPassword(joinTeamRequest.getPassword());
+			boolean result = joinReqService.save(joinReq);
+			if (!result){
+				throw new MyCustomException(ErrorCode.SYSTEM_ERROR, "系统错误");
+			}
+			return ResultUtils.success(true);
+		}
+
+		// 不用审核直接加入
+		return joinTeam(joinTeamRequest, userId);
+	}
+
+	@GetMapping("/{teamId}/reqList")
+	public ResponseEntity<List<JoinReqVO>> reqList(@PathVariable Long teamId, HttpServletRequest request) {
+		// 1. 判空,但是好像没什么用
+		if (teamId == null) throw new MyCustomException(ErrorCode.NULL_ERROR, "请求参数为空");
+
+		// 2. 只能看自己的队伍
+		User loginUser = userService.getLoginUser(request);
+		Team team = teamService.getById(teamId);
+		if (!Objects.equals(loginUser.getId(), team.getUserId())) throw new MyCustomException(ErrorCode.NO_AUTH);
+
+		// 3. 进行查询
+		List<JoinReqVO> joinReqVOList = joinReqService.reqList(teamId);
+
+		return ResultUtils.success(joinReqVOList);
+	}
+
 	@PostMapping("/join")
-	public ResponseEntity<Boolean> joinTeam(@RequestBody JoinTeamRequest joinTeamRequest, HttpServletRequest request) {
+	public ResponseEntity<Boolean> joinTeam(@RequestBody JoinTeamRequest joinTeamRequest, Long userId) {
 		if (joinTeamRequest == null) {
 			throw new MyCustomException(ErrorCode.NULL_ERROR);
 		}
-		User loginUser = userService.getLoginUser(request);
-		System.out.println(joinTeamRequest.getTeamId());
-		if (loginUser == null) {
-			throw new MyCustomException(ErrorCode.NO_AUTH);
-		}
-		Boolean result = teamService.joinTeam(joinTeamRequest, loginUser);
+		Boolean result = teamService.joinTeam(joinTeamRequest, userId);
 		if (!result) {
 			throw new MyCustomException(ErrorCode.SYSTEM_ERROR);
 		}
+		return ResultUtils.success(true);
+	}
+
+	@PostMapping("/accept")
+	public ResponseEntity<Boolean> accept(@RequestParam Long requestId, HttpServletRequest request) {
+		// 1. 判空
+		if (requestId == null) throw new MyCustomException(ErrorCode.NULL_ERROR);
+
+		QueryWrapper<JoinReq> queryWrapper = new QueryWrapper<>();
+		queryWrapper.eq("id", requestId);
+		JoinReq joinReq = joinReqService.getOne(queryWrapper);
+		if (joinReq == null) throw new MyCustomException(ErrorCode.PARAMS_ERROR);
+		// 2. 判断是不是自己的队伍
+		User loginUser = userService.getLoginUser(request);
+		Team team = teamService.getById(joinReq.getTeamId());
+		if (!Objects.equals(loginUser.getId(), team.getUserId())) throw new MyCustomException(ErrorCode.NO_AUTH);
+
+		// 3. 修改状态
+		joinReq.setStatus(1);
+		joinReqService.updateById(joinReq); // think 说是byId,结果传入实体类
+
+		// 4. 并且执行joinTeam操作
+		JoinTeamRequest joinTeamRequest = new JoinTeamRequest();
+		joinTeamRequest.setTeamId(joinReq.getTeamId());
+		joinTeamRequest.setPassword(joinReq.getPassword());
+		return joinTeam(joinTeamRequest, joinReq.getUserId());
+	}
+
+	@PostMapping("/reject")
+	public ResponseEntity<Boolean> reject(@RequestParam Long requestId, HttpServletRequest request) {
+		// 1. 判空
+		if (requestId == null) throw new MyCustomException(ErrorCode.NULL_ERROR);
+
+		JoinReq joinReq = joinReqService.getById(requestId);
+		// 2. 判断是不是自己的队伍
+		User loginUser = userService.getLoginUser(request);
+		Team team = teamService.getById(joinReq.getTeamId());
+		if (!Objects.equals(loginUser.getId(), team.getUserId())) throw new MyCustomException(ErrorCode.NO_AUTH);
+
+		// 3. 修改状态
+		joinReq.setStatus(2);
+		joinReqService.updateById(joinReq); // think 说是byId,结果传入实体类
+
+		// 4. 返回
 		return ResultUtils.success(true);
 	}
 
@@ -188,4 +275,5 @@ public class TeamController {
 		List<UserVO> memberList = teamService.TeamInfo(teamId);
 		return ResultUtils.success(Objects.requireNonNullElse(memberList, Collections.emptyList()));
 	}
+
 }
