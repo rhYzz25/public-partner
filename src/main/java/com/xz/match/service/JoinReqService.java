@@ -3,7 +3,6 @@ package com.xz.match.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xz.match.model.entity.JoinReq;
 import com.xz.match.model.vo.JoinReqVO;
-import com.xz.match.model.vo.UserVO;
 
 import java.util.List;
 

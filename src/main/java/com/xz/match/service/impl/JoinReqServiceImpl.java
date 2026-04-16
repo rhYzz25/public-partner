@@ -14,6 +14,7 @@ import com.xz.match.model.vo.UserVO;
 import com.xz.match.service.JoinReqService;
 import com.xz.match.mapper.JoinReqMapper;
 import com.xz.match.service.UserService;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -31,16 +32,13 @@ import java.util.stream.Stream;
 public class JoinReqServiceImpl extends ServiceImpl<JoinReqMapper, JoinReq>
 		implements JoinReqService {
 
+	@Resource
+	private UserService userService;
+	@Resource
+	private UserConvert userConvert;
+	@Resource
+	private TagMapper tagMapper;
 
-	private final UserService userService;
-	private final UserConvert userConvert;
-	private final TagMapper tagMapper;
-
-	public JoinReqServiceImpl(UserService userService, UserConvert userConvert, TagMapper tagMapper) {
-		this.userService = userService;
-		this.userConvert = userConvert;
-		this.tagMapper = tagMapper;
-	}
 
 	// think 这题我会,查询了两次肯定会有N+1
 	// think 完了,又变成N+2了,算了+2就+2吧,反正不是 N + N + 1就行了
@@ -62,11 +60,12 @@ public class JoinReqServiceImpl extends ServiceImpl<JoinReqMapper, JoinReq>
 			vo.setTeamId(joinReq.getTeamId());
 			vo.setUserId(joinReq.getUserId());
 			vo.setStatus(joinReq.getStatus());
-			vo.setPassword(joinReq.getPassword());
 			vo.setCreateTime(joinReq.getCreateTime());
 			User user = userService.getById(joinReq.getUserId());
 			UserVO userVO = userConvert.userToUserVO(user);
 			userVO.setTags(tagMapper.selectTagsByUserId(userVO.getId()).stream().map(Tag::getName).toList());
+			// 好好好,只填充 不填充 是吧
+			vo.setUser(userVO);
 			return vo;
 		}).toList();
 

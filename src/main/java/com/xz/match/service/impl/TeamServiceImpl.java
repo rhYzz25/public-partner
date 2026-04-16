@@ -466,7 +466,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 		// 该队伍是什么状态
 		// 队伍是否过期 think 都不显示过期队伍这里还要校验吗
 		// 通过teamId,将userId插入user_team表中
-		if (joinTeamRequest == null || userId == null) {
+		if (joinTeamRequest == null && userId == null) {
 			throw new MyCustomException(ErrorCode.PARAMS_ERROR);
 		}
 		// 1. 获取队伍
@@ -521,7 +521,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team>
 			countWrapper.eq("user_id", userId);
 			long joinedCount = userTeamService.count(countWrapper);
 			if (joinedCount >= 5) {
-				throw new MyCustomException(ErrorCode.PARAMS_ERROR, "最多只能加入 5 个队伍");
+				throw new MyCustomException(ErrorCode.PARAMS_ERROR, "单个用户最多只能加入 5 个队伍");
 			}
 			// 7. 查询用户是否已经加入该队伍
 			//UserTeam userTeam = userTeamService.getById(joinTeamRequest.getTeamId()); // think 这个需要原生id,不是teamId

@@ -1,5 +1,7 @@
 package com.xz.match.model.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.xz.match.model.constant.TeamStatusEnum;
 import lombok.Data;
 
@@ -16,9 +18,10 @@ public class Team implements Serializable {
 	@Serial
 	private static final long serialVersionUID = 2L;
 
-    /**
+     /**
      * id
      */
+	@TableId(type = IdType.AUTO)
     private Long id;
 
     /**
